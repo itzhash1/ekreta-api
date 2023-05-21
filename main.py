@@ -16,8 +16,9 @@ class KRETAEncoder():
         return base64.b64encode(hmac.new(self.KeyProd, payload.encode('utf-8'), digestmod=hashlib.sha512).digest()).decode('utf-8')
 
 class IdpApiV1:
-    def __init__(self, kretaEncoder : KRETAEncoder) -> None:
+    def __init__(self, kretaEncoder : KRETAEncoder, proxies : dict = None) -> None:
         self.kretaEncoder = kretaEncoder
+        self.proxies = proxies
     def extendToken(self, refresh_token : str, institute_code : str, nonce : str):
         try:
             refresh_token_data = {
@@ -34,13 +35,14 @@ class IdpApiV1:
                 'X-AuthorizationPolicy-Version': 'v2'
             })
 
-            return requests.post("https://idp.e-kreta.hu/connect/token", data=refresh_token_data, headers=refreshTokenHeaders).json()
+            return requests.post("https://idp.e-kreta.hu/connect/token", data=refresh_token_data, headers=refreshTokenHeaders, proxies=self.proxies).json()
         except:
             pass
     def getNonce(self) -> str or None:
         try:
-            return requests.get("https://idp.e-kreta.hu/nonce", headers=headers, timeout=10).text
-        except:
+            return requests.get("https://idp.e-kreta.hu/nonce", headers=headers, proxies=self.proxies).text
+        except Exception as e:
+            print(e)
             print('Ha ez történik nagy valószínűséggel az ip címed tiltva lett.')
     def login(self, userName : str, password : str, institute_code : str, nonce : str):
         try:
@@ -59,7 +61,7 @@ class IdpApiV1:
                 'X-AuthorizationPolicy-Version': 'v2'
             })
 
-            return requests.post("https://idp.e-kreta.hu/connect/token", data=login_data, headers=loginHeaders).json()
+            return requests.post("https://idp.e-kreta.hu/connect/token", data=login_data, headers=loginHeaders, proxies=self.proxies).json()
         except:
             pass
     def revokeRefreshToken(self, refresh_token : str):
@@ -70,38 +72,40 @@ class IdpApiV1:
                 'token_type': 'refresh token'
             }
 
-            return requests.post("https//idp.e-kreta.hu/connect/revocation", data=revokeRefreshTokenData, headers=headers).text
+            return requests.post("https//idp.e-kreta.hu/connect/revocation", data=revokeRefreshTokenData, headers=headers, proxies=self.proxies).text
         except:
             pass
 
 class MobileApiV3:
-    def __init__(self, authorizationToken : str, institute_code : str) -> None:
+    def __init__(self, authorizationToken : str, institute_code : str, proxies : dict = None) -> None:
         self.apiUrl = f'https://{institute_code}.e-kreta.hu/ellenorzo/v3'
         self.headers = headers.copy()
         self.headers.update({
             'Authorization': f'Bearer {authorizationToken}',
             'apiKey': '21ff6c25-d1da-4a68-a811-c881a6057463'
         })
+
+        self.proxies = proxies
     def deleteBankAccountNumber(self):
         try:
-            return requests.delete(f'{self.apiUrl}/sajat/Bankszamla', headers=self.headers).text
+            return requests.delete(f'{self.apiUrl}/sajat/Bankszamla', headers=self.headers, proxies=self.proxies).text
         except:
             pass
     def deleteReservation(self, uid : str):
         try:
-            return requests.delete(f'{self.apiUrl}/sajat/Fogadoorak/Idopontok/Jelentkezesek/{uid}', headers=self.headers).text
+            return requests.delete(f'{self.apiUrl}/sajat/Fogadoorak/Idopontok/Jelentkezesek/{uid}', headers=self.headers, proxies=self.proxies).text
         except:
             pass
     def downloadAttachment(self, uid : str):
         try:
-            return requests.get(f'{self.apiUrl}/sajat/Csatolmany/{uid}', headers=self.headers).text
+            return requests.get(f'{self.apiUrl}/sajat/Csatolmany/{uid}', headers=self.headers, proxies=self.proxies).text
         except:
             pass
     def getAnnouncedTests(self, Uids : str = None):
         try:
             return requests.get(f'{self.apiUrl}/sajat/BejelentettSzamonkeresek', params={
                 'Uids': Uids
-            }, headers=self.headers).json()
+            }, headers=self.headers, proxies=self.proxies).json()
         except:
             pass
     def getAnnouncedTests(self, datumTol : str = None, datumIg : str = None):
@@ -109,7 +113,7 @@ class MobileApiV3:
             return requests.get(f'{self.apiUrl}/sajat/BejelentettSzamonkeresek', params={
                 'datumTol': datumTol,
                 'datumIg': datumIg
-            }, headers=self.headers).json()
+            }, headers=self.headers, proxies=self.proxies).json()
         except:
             pass
     def getClassAverage(self, oktatasiNevelesiFeladatUid : str, tantargyUid : str = None):
@@ -117,19 +121,19 @@ class MobileApiV3:
             return requests.get(f'{self.apiUrl}/sajat/Ertekelesek/Atlagok/OsztalyAtlagok', params={
                 'oktatasiNevelesiFeladatUid': oktatasiNevelesiFeladatUid,
                 'tantargyUid': tantargyUid
-            }, headers=self.headers).json()
+            }, headers=self.headers, proxies=self.proxies).json()
         except:
             pass
-    def getClassMaster(self, Uids : str = None):
+    def getClassMaster(self, Uids : str):
         try:
             return requests.get(f'{self.apiUrl}/felhasznalok/Alkalmazottak/Tanarok/Osztalyfonokok', params={
                 'Uids': Uids
-            }, headers=self.headers).json()
+            }, headers=self.headers, proxies=self.proxies).json()
         except:
             pass
     def getConsultingHour(self, uid : str):
         try:
-            return requests.get(f'{self.apiUrl}/sajat/Fogadoorak/{uid}', headers=self.headers).json()
+            return requests.get(f'{self.apiUrl}/sajat/Fogadoorak/{uid}', headers=self.headers, proxies=self.proxies).json()
         except:
             pass
     def getConsultingHours(self, datumTol : str = None, datumIg : str = None):
@@ -137,32 +141,32 @@ class MobileApiV3:
             return requests.get(f'{self.apiUrl}/sajat/Fogadoorak', params={
                 'datumTol': datumTol,
                 'datumIg': datumIg
-            }, headers=self.headers).json()
+            }, headers=self.headers, proxies=self.proxies).json()
         except:
             pass
     def getDeviceGivenState(self) -> bool or None:
         try:
-            return bool(requests.get(f'{self.apiUrl}/TargyiEszkoz/IsEszkozKiosztva', headers=self.headers).text)
+            return bool(requests.get(f'{self.apiUrl}/TargyiEszkoz/IsEszkozKiosztva', headers=self.headers, proxies=self.proxies).text)
         except:
             pass
     def getEvaluations(self):
         try:
-            return requests.get(f'{self.apiUrl}/sajat/Ertekelesek', headers=self.headers).json()
+            return requests.get(f'{self.apiUrl}/sajat/Ertekelesek', headers=self.headers, proxies=self.proxies).json()
         except:
             pass
     def getGroups(self):
         try:
-            return requests.get(f'{self.apiUrl}/sajat/OsztalyCsoportok', headers=self.headers).json()
+            return requests.get(f'{self.apiUrl}/sajat/OsztalyCsoportok', headers=self.headers, proxies=self.proxies).json()
         except:
             pass
     def getGuardian4T(self):
         try:
-            return requests.get(f'{self.apiUrl}/sajat/GondviseloAdatlap', headers=self.headers).json()
+            return requests.get(f'{self.apiUrl}/sajat/GondviseloAdatlap', headers=self.headers, proxies=self.proxies).json()
         except:
             pass
     def getHomework(self, id : str):
         try:
-            return requests.get(f'{self.apiUrl}/sajat/HaziFeladatok/{id}', headers=self.headers).json()
+            return requests.get(f'{self.apiUrl}/sajat/HaziFeladatok/{id}', headers=self.headers, proxies=self.proxies).json()
         except:
             pass
     def getHomeworks(self, datumTol : str = None, datumIg : str = None):
@@ -170,7 +174,7 @@ class MobileApiV3:
             return requests.get(f'{self.apiUrl}/sajat/HaziFeladatok', params={
                 'datumTol': datumTol,
                 'datumIg': datumIg
-            }, headers=self.headers).json()
+            }, headers=self.headers, proxies=self.proxies).json()
         except:
             pass
     def getLEPEvents(self):
@@ -182,7 +186,7 @@ class MobileApiV3:
         try:
             return requests.get(f'{self.apiUrl}/sajat/OrarendElem', params={
                 'orarendElemUid': orarendElemUid
-            }, headers=self.headers).json()
+            }, headers=self.headers, proxies=self.proxies).json()
         except:
             pass
     def getLessons(self, datumTol : str = None, datumIg : str = None):
@@ -190,7 +194,7 @@ class MobileApiV3:
             return requests.get(f'{self.apiUrl}/sajat/OrarendElemek', params={
                 'datumTol': datumTol,
                 'datumIg': datumIg
-            }, headers=self.headers).json()
+            }, headers=self.headers, proxies=self.proxies).json()
         except:
             pass
     def getNotes(self, datumTol : str = None, datumIg : str = None):
@@ -198,12 +202,12 @@ class MobileApiV3:
             return requests.get(f'{self.apiUrl}/sajat/Feljegyzesek', params={
                 'datumTol': datumTol,
                 'datumIg': datumIg
-            }, headers=self.headers).json()
+            }, headers=self.headers, proxies=self.proxies).json()
         except:
             pass
     def getNoticeBoardItems(self):
         try:
-            return requests.get(f'{self.apiUrl}/sajat/FaliujsagElemek', headers=self.headers).json()
+            return requests.get(f'{self.apiUrl}/sajat/FaliujsagElemek', headers=self.headers, proxies=self.proxies).json()
         except:
             pass
     def getOmissions(self, datumTol : str = None, datumIg : str = None):
@@ -211,39 +215,39 @@ class MobileApiV3:
             return requests.get(f'{self.apiUrl}/sajat/Mulasztasok', params={
                 'datumTol': datumTol,
                 'datumIg': datumIg
-            }, headers=self.headers).json()
+            }, headers=self.headers, proxies=self.proxies).json()
         except:
             pass
     def getRegistrationState(self):
         try:
-            return requests.get(f'{self.apiUrl}/TargyiEszkoz/IsRegisztralt', headers=self.headers).text
+            return requests.get(f'{self.apiUrl}/TargyiEszkoz/IsRegisztralt', headers=self.headers, proxies=self.proxies).text
         except:
             pass
     def getSchoolYearCalendar(self):
         try:
-            return requests.get(f'{self.apiUrl}/sajat/Intezmenyek/TanevRendjeElemek', headers=self.headers).json()
+            return requests.get(f'{self.apiUrl}/sajat/Intezmenyek/TanevRendjeElemek', headers=self.headers, proxies=self.proxies).json()
         except:
             pass
     def getStudent(self):
         try:
-            return requests.get(f'{self.apiUrl}/sajat/TanuloAdatlap', headers=self.headers).json()
+            return requests.get(f'{self.apiUrl}/sajat/TanuloAdatlap', headers=self.headers, proxies=self.proxies).json()
         except:
             pass
     def getSubjectAverage(self, oktatasiNevelesiFeladatUid : str):
         try:
             return requests.get(f'{self.apiUrl}/sajat/Ertekelesek/Atlagok/TantargyiAtlagok', params={
                 'oktatasiNevelesiFeladatUid': oktatasiNevelesiFeladatUid
-            }, headers=self.headers).json()
+            }, headers=self.headers, proxies=self.proxies).json()
         except:
             pass
     def getTimeTableWeeks(self):
         try:
-            return requests.get(f'{self.apiUrl}/sajat/Intezmenyek/Hetirendek/Orarendi', headers=self.headers).json()
+            return requests.get(f'{self.apiUrl}/sajat/Intezmenyek/Hetirendek/Orarendi', headers=self.headers, proxies=self.proxies).json()
         except:
             pass
     def postBankAccountNumber(self, BankszamlaSzam : str, BankszamlaTulajdonosNeve : str, BankszamlaTulajdonosTipusId : str, SzamlavezetoBank : str):
         try:
-            return requests.post(f'{self.apiUrl}/sajat/Bankszamla', data=f'BankAccountNumberPostDto(bankAccountNumber={BankszamlaSzam}, bankAccountOwnerType={BankszamlaTulajdonosTipusId}, bankAccountOwnerName={BankszamlaTulajdonosNeve}, bankName={SzamlavezetoBank})', headers=self.headers).text
+            return requests.post(f'{self.apiUrl}/sajat/Bankszamla', data=f'BankAccountNumberPostDto(bankAccountNumber={BankszamlaSzam}, bankAccountOwnerType={BankszamlaTulajdonosTipusId}, bankAccountOwnerName={BankszamlaTulajdonosNeve}, bankName={SzamlavezetoBank})', headers=self.headers, proxies=self.proxies).text
         except:
             pass
     def postContact(self, email, telefonszam):
@@ -251,33 +255,35 @@ class MobileApiV3:
             return requests.post(f'{self.apiUrl}/sajat/Elerhetoseg', data={
                 'email': email,
                 'telefonszam': telefonszam
-            }, headers=self.headers).text
+            }, headers=self.headers, proxies=self.proxies).text
         except:
             pass
     def postCovidForm(self):
         try:
-            return requests.post(f'{self.apiUrl}/Bejelentes/Covid', headers=self.headers).text
+            return requests.post(f'{self.apiUrl}/Bejelentes/Covid', headers=self.headers, proxies=self.proxies).text
         except:
             pass
     def postReservation(self, uid : str):
         try:
-            return requests.post(f'{self.apiUrl}/sajat/Fogadoorak/Idopontok/Jelentkezesek/{uid}', headers=self.headers).text
+            return requests.post(f'{self.apiUrl}/sajat/Fogadoorak/Idopontok/Jelentkezesek/{uid}', headers=self.headers, proxies=self.proxies).text
         except:
             pass
     def updateLepEventPermission(self, EloadasId : str, Dontes : bool):
         try:
-            return requests.post(f'{self.apiUrl}/Lep/Eloadasok/GondviseloEngedelyezes', data=f'LepEventGuardianPermissionPostDto(eventId={EloadasId}, isPermitted={str(Dontes)})', headers=self.headers).text
+            return requests.post(f'{self.apiUrl}/Lep/Eloadasok/GondviseloEngedelyezes', data=f'LepEventGuardianPermissionPostDto(eventId={EloadasId}, isPermitted={str(Dontes)})', headers=self.headers, proxies=self.proxies).text
         except:
             pass
 
 class GlobalApiV1:
-    def __init__(self) -> None:
+    def __init__(self, proxies : dict = None) -> None:
         self.headers = headers.copy()
         self.headers.update({
             'api-version': 'v1'
         })
+
+        self.proxies  = proxies
     def getInstitutes(self):
         try:
-            return requests.get('https://kretaglobalapi.e-kreta.hu/intezmenyek/kreta/publikus', headers=self.headers).json()
+            return requests.get('https://kretaglobalapi.e-kreta.hu/intezmenyek/kreta/publikus', headers=self.headers, proxies=self.proxies).json()
         except:
             pass
